@@ -5,6 +5,7 @@ from aiogram.types import CallbackQuery
 from app.bot.keyboards.settings import (
     arbitrage_types_keyboard,
     exchanges_keyboard,
+    numeric_options_keyboard,
     settings_keyboard,
 )
 from app.bot.keyboards.start import start_keyboard
@@ -13,6 +14,43 @@ from app.services.user_settings_service import UserSettingsService
 from app.storage.db import SessionLocal
 
 router = Router()
+
+NUMERIC_CONFIGS = {
+    "min_profit_pct": {
+        "title": "Минимальный профит (%)",
+        "options": ["0.1", "0.3", "0.5", "1.0", "2.0"],
+        "cast": float,
+    },
+    "min_volume_24h": {
+        "title": "Минимальный 24ч объём (USDT)",
+        "options": ["100000", "500000", "1000000", "5000000"],
+        "cast": float,
+    },
+    "capital_usdt": {
+        "title": "Капитал (USDT)",
+        "options": ["50", "100", "500", "1000", "5000"],
+        "cast": float,
+    },
+    "min_executable_ratio_pct": {
+        "title": "Минимальная исполнимость (%)",
+        "options": ["30", "50", "70", "90"],
+        "cast": float,
+    },
+    "max_signal_age_ms": {
+        "title": "Максимальный возраст сигнала (мс)",
+        "options": ["3000", "5000", "10000", "30000"],
+        "cast": int,
+    },
+}
+
+MENU_TO_KEY = {
+    "settings_min_profit": "min_profit_pct",
+    "settings_min_volume": "min_volume_24h",
+    "settings_capital": "capital_usdt",
+    "settings_min_exec": "min_executable_ratio_pct",
+    "settings_max_age": "max_signal_age_ms",
+}
+
 
 async def _safe_edit_text(callback: CallbackQuery, text: str, reply_markup) -> None:
     if not callback.message:
@@ -93,26 +131,33 @@ async def toggle_arb_type(callback: CallbackQuery) -> None:
     await callback.answer(f"{arb_type.value} обновлён")
 
 
-@router.callback_query(lambda c: c.data in {
-    "settings_min_profit",
-    "settings_min_volume",
-    "settings_capital",
-    "settings_min_exec",
-    "settings_max_age",
-})
-async def settings_values_placeholder(callback: CallbackQuery) -> None:
-    labels = {
-        "settings_min_profit": "Минимальный профит",
-        "settings_min_volume": "Объём 24ч",
-        "settings_capital": "Капитал",
-        "settings_min_exec": "Минимальная исполнимость",
-        "settings_max_age": "Макс. возраст сигнала",
-    }
-    label = labels[callback.data]
-    await callback.answer(
-        f"{label}: экран ввода будет добавлен следующим шагом.",
-        show_alert=True,
+@router.callback_query(lambda c: c.data in MENU_TO_KEY)
+async def settings_numeric_menu(callback: CallbackQuery) -> None:
+    key = MENU_TO_KEY[callback.data]
+    config = NUMERIC_CONFIGS[key]
+    await _safe_edit_text(
+        callback,
+        f"{config['title']}\nВыберите значение:",
+        numeric_options_keyboard(key, config["options"]),
     )
+    await callback.answer()
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("set_value:"))
+async def settings_set_value(callback: CallbackQuery) -> None:
+    _, key, value_raw = callback.data.split(":", maxsplit=2)
+    config = NUMERIC_CONFIGS.get(key)
+    if not config:
+        await callback.answer("Неизвестный параметр", show_alert=True)
+        return
+
+    cast = config["cast"]
+    value = cast(value_raw)
+
+    async with SessionLocal() as session:
+        await UserSettingsService(session).set_numeric_setting(callback.from_user.id, key, value)
+
+    await callback.answer(f"Сохранено: {config['title']} = {value_raw}")
 
 
 @router.callback_query(lambda c: c.data == "settings_back")

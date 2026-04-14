@@ -7,6 +7,25 @@ from app.utils.links import ticker_link
 from app.utils.time import now_ms
 
 
+PRICE_BIAS = {
+    Exchange.BYBIT: -0.35,
+    Exchange.KUCOIN: 0.20,
+    Exchange.OKX: 0.30,
+    Exchange.GATE: -0.15,
+    Exchange.BINGX: -0.05,
+}
+
+FUNDING_RATE = {
+    Exchange.BYBIT: -0.008,
+    Exchange.KUCOIN: 0.015,
+    Exchange.OKX: 0.010,
+    Exchange.GATE: -0.012,
+    Exchange.BINGX: 0.006,
+}
+
+SYMBOL_BASE = {"BTCUSDT": 60000.0, "ETHUSDT": 3000.0, "SOLUSDT": 150.0}
+
+
 class StubExchangeAdapter(BaseExchangeAdapter):
     exchange: Exchange
 
@@ -17,17 +36,24 @@ class StubExchangeAdapter(BaseExchangeAdapter):
         return exchange_symbol.replace("-", "").upper()
 
     async def fetch_orderbook(self, symbol: str, depth: int = 10) -> OrderBook:
-        mid = 100.0
-        bids = [OrderBookLevel(price=mid - i * 0.1, size=10 + i) for i in range(depth)]
-        asks = [OrderBookLevel(price=mid + i * 0.1, size=10 + i) for i in range(depth)]
+        mid = SYMBOL_BASE.get(symbol, 100.0) + PRICE_BIAS[self.exchange]
+        step = max(mid * 0.0001, 0.01)
+        bids = [OrderBookLevel(price=mid - i * step, size=0.05 * (10 + i)) for i in range(depth)]
+        asks = [OrderBookLevel(price=mid + i * step, size=0.05 * (10 + i)) for i in range(depth)]
         return OrderBook(symbol=symbol, exchange=self.exchange, bids=bids, asks=asks, timestamp_ms=now_ms())
 
     async def fetch_funding(self, symbol: str) -> FundingInfo | None:
         current = now_ms()
-        return FundingInfo(symbol=symbol, exchange=self.exchange, rate_pct=0.01, next_funding_ts_ms=current + 3600000, timestamp_ms=current)
+        return FundingInfo(
+            symbol=symbol,
+            exchange=self.exchange,
+            rate_pct=FUNDING_RATE[self.exchange],
+            next_funding_ts_ms=current + 3600000,
+            timestamp_ms=current,
+        )
 
     async def fetch_volume_24h(self, symbol: str) -> float:
-        return 1_000_000.0
+        return 250_000_000.0 if symbol == "BTCUSDT" else 90_000_000.0
 
     def build_ticker_link(self, symbol: str) -> str:
         return ticker_link(self.exchange, symbol)

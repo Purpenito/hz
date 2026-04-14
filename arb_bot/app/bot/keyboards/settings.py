@@ -45,3 +45,12 @@ def arbitrage_types_keyboard(settings: UserSettings) -> InlineKeyboardMarkup:
         ])
     rows.append([InlineKeyboardButton(text="Назад", callback_data="open_settings")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def numeric_options_keyboard(key: str, options: list[str]) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text=option, callback_data=f"set_value:{key}:{option}")]
+        for option in options
+    ]
+    rows.append([InlineKeyboardButton(text="Назад", callback_data="open_settings")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)

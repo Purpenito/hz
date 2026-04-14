@@ -12,8 +12,26 @@ class BybitAdapter(BaseExchangeAdapter):
     _base_url = "https://api.bybit.com"
 
     async def fetch_symbols(self) -> set[str]:
-        # keep controlled universe for stable scanning speed
-        return {"BTCUSDT", "ETHUSDT", "SOLUSDT"}
+        symbols: set[str] = set()
+        cursor = ""
+        async with httpx.AsyncClient(timeout=15) as client:
+            while True:
+                params = {"category": "linear", "limit": 1000}
+                if cursor:
+                    params["cursor"] = cursor
+                resp = await client.get(f"{self._base_url}/v5/market/instruments-info", params=params)
+                payload = resp.json()
+                result = payload.get("result", {})
+                for item in result.get("list", []):
+                    if item.get("status") != "Trading" or item.get("quoteCoin") != "USDT":
+                        continue
+                    symbol = item.get("symbol")
+                    if symbol:
+                        symbols.add(symbol)
+                cursor = result.get("nextPageCursor") or ""
+                if not cursor:
+                    break
+        return symbols
 
     def normalize_symbol(self, exchange_symbol: str) -> str:
         return exchange_symbol.replace("-", "").upper()

@@ -31,6 +31,8 @@ class KucoinAdapter(BaseExchangeAdapter):
 
         contracts = payload.get("data", [])
         for item in contracts:
+            if item.get("quoteCurrency") != "USDT":
+                continue
             exchange_symbol = item.get("symbol")
             if not exchange_symbol:
                 continue
@@ -38,8 +40,7 @@ class KucoinAdapter(BaseExchangeAdapter):
 
     async def fetch_symbols(self) -> set[str]:
         await self._ensure_symbol_map()
-        allowed = {"BTCUSDT", "ETHUSDT", "SOLUSDT"}
-        return {s for s in allowed if s in self._symbol_map}
+        return set(self._symbol_map.keys())
 
     async def _get_contract(self, symbol: str) -> str:
         await self._ensure_symbol_map()

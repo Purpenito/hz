@@ -41,17 +41,22 @@ async def scanner_loop(scanner: ScannerService, bot: Bot) -> None:
     while True:
         try:
             await scanner.refresh_market_data(depth=10)
+            refresh_metrics = scanner.get_last_refresh_metrics()
 
             async with SessionLocal() as session:
                 settings_service = UserSettingsService(session)
                 dedup_service = DedupService(session)
                 users = await settings_service.list_all()
                 total_sent = 0
+                total_candidates_before_filters = 0
 
                 for user_settings in users:
                     if not user_settings.notifications_enabled:
                         continue
                     signals = await scanner.scan(user_settings)
+                    total_candidates_before_filters += scanner.last_scan_metrics.get(
+                        "candidates_before_filters", 0
+                    )
                     for signal in signals:
                         if await dedup_service.should_send(user_settings.telegram_user_id, signal):
                             await notifier.send_signal(user_settings.telegram_user_id, signal)
@@ -60,8 +65,12 @@ async def scanner_loop(scanner: ScannerService, bot: Bot) -> None:
 
                 await session.commit()
                 logger.info(
-                    "scanner refresh completed; users=%s sent=%s",
+                    "scanner refresh completed; users=%s symbols_total=%s symbols_common_2plus=%s symbols_scanned_this_cycle=%s candidates_before_filters=%s sent=%s",
                     len(users),
+                    refresh_metrics.get("symbols_total", 0),
+                    refresh_metrics.get("symbols_common_2plus", 0),
+                    refresh_metrics.get("symbols_scanned_this_cycle", 0),
+                    total_candidates_before_filters,
                     total_sent,
                 )
         except Exception:
@@ -91,6 +100,7 @@ async def run_bot() -> None:
         orderbook_store=OrderBookStore(),
         funding_store=FundingStore(),
         volume_store=VolumeStore(),
+        symbols_per_exchange_cycle=settings_cfg.scanner_symbols_per_exchange_cycle,
     )
 
     asyncio.create_task(scanner_loop(scanner, bot))

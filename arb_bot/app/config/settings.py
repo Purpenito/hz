@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = Field(default="", alias="TELEGRAM_BOT_TOKEN")
     scanner_interval_sec: int = 15
+    scanner_symbols_per_exchange_cycle: int = 80
 
     db_url: str = Field(
         default="postgresql+asyncpg://arb:arb@postgres:5432/arb", alias="DB_URL"

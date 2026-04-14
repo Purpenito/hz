@@ -25,8 +25,7 @@ class BingxAdapter(BaseExchangeAdapter):
             if sym.endswith("-USDT") and item.get("status") == 1:
                 symbols.add(sym.replace("-USDT", ""))
 
-        allowed = {"BTC", "ETH", "SOL"}
-        return {f"{s}USDT" for s in allowed if s in symbols}
+        return {f"{s}USDT" for s in symbols}
 
     def normalize_symbol(self, exchange_symbol: str) -> str:
         return exchange_symbol.replace("-", "").upper()

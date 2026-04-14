@@ -10,7 +10,7 @@ def test_filters_positive_case():
         arbitrage_type=ArbitrageType.FUTURES_FUTURES,
         symbol="BTCUSDT",
         long_exchange=Exchange.BYBIT,
-        short_exchange=Exchange.OKX,
+        short_exchange=Exchange.KUCOIN,
         top_long_price=100,
         top_short_price=101,
         avg_long_price=100,

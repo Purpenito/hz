@@ -23,7 +23,7 @@ FUNDING_RATE = {
     Exchange.BINGX: 0.006,
 }
 
-SYMBOL_BASE = {"BTCUSDT": 60000.0, "ETHUSDT": 3000.0, "SOLUSDT": 150.0}
+SYMBOL_BASE = {"BTCUSDT": 85000.0, "ETHUSDT": 1600.0, "SOLUSDT": 86.2}
 
 
 class StubExchangeAdapter(BaseExchangeAdapter):

@@ -19,7 +19,7 @@ class UserSettingsRepository:
     async def create_default(self, user_id: int) -> UserSettingsORM:
         item = UserSettingsORM(
             user_id=user_id,
-            enabled_exchanges_json=json.dumps([Exchange.BYBIT.value, Exchange.KUCOIN.value]),
+            enabled_exchanges_json=json.dumps([Exchange.BYBIT.value, Exchange.KUCOIN.value, Exchange.BINGX.value]),
             enabled_arbitrage_types_json=json.dumps([
                 ArbitrageType.FUTURES_FUTURES.value,
                 ArbitrageType.FUNDING.value,

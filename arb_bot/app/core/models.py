@@ -34,7 +34,7 @@ class FundingInfo:
 class UserSettings:
     telegram_user_id: int
     notifications_enabled: bool = True
-    enabled_exchanges: list[Exchange] = field(default_factory=lambda: [Exchange.BYBIT, Exchange.KUCOIN])
+    enabled_exchanges: list[Exchange] = field(default_factory=lambda: [Exchange.BYBIT, Exchange.KUCOIN, Exchange.BINGX])
     enabled_arbitrage_types: list[ArbitrageType] = field(
         default_factory=lambda: [ArbitrageType.FUTURES_FUTURES, ArbitrageType.FUNDING]
     )

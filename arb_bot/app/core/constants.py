@@ -1,7 +1,7 @@
 from app.core.enums import Exchange
 
 DEFAULT_DEPTH_LEVELS = 10
-DEFAULT_FEE_PCT = 0.055  # per side
+DEFAULT_FEE_PCT = 0.02  # per side, conservative default for maker-like execution
 
 EXCHANGE_PAIRS = [
     (Exchange.BYBIT, Exchange.KUCOIN),

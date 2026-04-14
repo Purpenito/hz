@@ -38,7 +38,7 @@ class SentSignalORM(Base):
     __tablename__ = "sent_signals"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
     signal_key: Mapped[str] = mapped_column(String(255), index=True)
     symbol: Mapped[str] = mapped_column(String(64))
     arbitrage_type: Mapped[str] = mapped_column(String(64))

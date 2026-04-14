@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
 
 CREATE TABLE IF NOT EXISTS sent_signals (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id BIGINT NOT NULL,
   signal_key VARCHAR(255) NOT NULL,
   symbol VARCHAR(64) NOT NULL,
   arbitrage_type VARCHAR(64) NOT NULL,

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   enabled_exchanges_json TEXT NOT NULL,
   enabled_arbitrage_types_json TEXT NOT NULL,
-  min_profit_pct DOUBLE PRECISION NOT NULL DEFAULT 0.1,
+  min_profit_pct DOUBLE PRECISION NOT NULL DEFAULT 0.01,
   min_volume_24h DOUBLE PRECISION NOT NULL DEFAULT 100000,
   capital_usdt DOUBLE PRECISION NOT NULL DEFAULT 100,
   min_executable_ratio_pct DOUBLE PRECISION NOT NULL DEFAULT 50,

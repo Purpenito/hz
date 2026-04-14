@@ -38,7 +38,7 @@ class UserSettings:
     enabled_arbitrage_types: list[ArbitrageType] = field(
         default_factory=lambda: [ArbitrageType.FUTURES_FUTURES, ArbitrageType.FUNDING]
     )
-    min_profit_pct: float = 0.1
+    min_profit_pct: float = 0.01
     min_volume_24h: float = 100_000.0
     capital_usdt: float = 100.0
     min_executable_ratio_pct: float = 50.0

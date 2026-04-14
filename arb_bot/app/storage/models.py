@@ -25,7 +25,7 @@ class UserSettingsORM(Base):
     notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     enabled_exchanges_json: Mapped[str] = mapped_column(Text)
     enabled_arbitrage_types_json: Mapped[str] = mapped_column(Text)
-    min_profit_pct: Mapped[float] = mapped_column(Float, default=0.1)
+    min_profit_pct: Mapped[float] = mapped_column(Float, default=0.01)
     min_volume_24h: Mapped[float] = mapped_column(Float, default=100000)
     capital_usdt: Mapped[float] = mapped_column(Float, default=100)
     min_executable_ratio_pct: Mapped[float] = mapped_column(Float, default=50)

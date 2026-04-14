@@ -18,7 +18,7 @@ router = Router()
 NUMERIC_CONFIGS = {
     "min_profit_pct": {
         "title": "Минимальный профит (%)",
-        "options": ["0.1", "0.3", "0.5", "1.0", "2.0"],
+        "options": ["0.00", "0.01", "0.05", "0.10", "0.30"],
         "cast": float,
     },
     "min_volume_24h": {

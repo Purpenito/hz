@@ -18,6 +18,7 @@ from app.market_data.orderbooks import OrderBookStore
 from app.market_data.symbols import SymbolsStore
 from app.market_data.volumes import VolumeStore
 from app.services.scanner_service import ScannerService
+from app.storage.init_db import ensure_schema
 
 settings_cfg = get_settings()
 setup_logging(settings_cfg.log_level)
@@ -45,6 +46,8 @@ async def run_bot() -> None:
     if not settings_cfg.telegram_bot_token:
         logger.warning("TELEGRAM_BOT_TOKEN is empty; bot polling skipped")
         return
+
+    await ensure_schema()
 
     bot = Bot(token=settings_cfg.telegram_bot_token)
     dp = Dispatcher()

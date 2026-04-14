@@ -1,5 +1,3 @@
-from itertools import product
-
 from app.arbitrage.filters import passes_user_filters
 from app.arbitrage.funding import calc_funding_signal
 from app.arbitrage.futures_futures import calc_futures_futures_signal
@@ -31,14 +29,31 @@ class ScannerService:
 
     async def refresh_market_data(self, depth: int = 10) -> None:
         for adapter in self.registry.all():
-            symbols = await adapter.fetch_symbols()
+            try:
+                symbols = await adapter.fetch_symbols()
+            except Exception:
+                # keep scanner alive even if one exchange API is temporarily unavailable
+                continue
+
             self.symbols_store.set_symbols(adapter.exchange, symbols)
             for symbol in symbols:
-                self.orderbook_store.put(await adapter.fetch_orderbook(symbol, depth=depth))
-                funding = await adapter.fetch_funding(symbol)
-                if funding:
-                    self.funding_store.put(funding)
-                self.volume_store.put(adapter.exchange, symbol, await adapter.fetch_volume_24h(symbol))
+                try:
+                    self.orderbook_store.put(await adapter.fetch_orderbook(symbol, depth=depth))
+                except Exception:
+                    continue
+
+                try:
+                    funding = await adapter.fetch_funding(symbol)
+                    if funding:
+                        self.funding_store.put(funding)
+                except Exception:
+                    pass
+
+                try:
+                    self.volume_store.put(adapter.exchange, symbol, await adapter.fetch_volume_24h(symbol))
+                except Exception:
+                    # keep previous volume (if exists) when fetch fails
+                    pass
 
     async def scan(self, settings: UserSettings):
         signals = []

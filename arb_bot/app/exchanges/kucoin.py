@@ -11,11 +11,8 @@ class KucoinAdapter(BaseExchangeAdapter):
     exchange = Exchange.KUCOIN
     _base_url = "https://api-futures.kucoin.com"
 
-    def _contract_symbol(self, symbol: str) -> str:
-        return f"{symbol}M"
-
-    async def fetch_symbols(self) -> set[str]:
-        return {"BTCUSDT", "ETHUSDT", "SOLUSDT"}
+    def __init__(self) -> None:
+        self._symbol_map: dict[str, str] = {}
 
     def normalize_symbol(self, exchange_symbol: str) -> str:
         normalized = exchange_symbol.upper().replace("-", "")
@@ -25,14 +22,42 @@ class KucoinAdapter(BaseExchangeAdapter):
             normalized = "BTC" + normalized[3:]
         return normalized
 
+    async def _ensure_symbol_map(self) -> None:
+        if self._symbol_map:
+            return
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{self._base_url}/api/v1/contracts/active")
+            payload = resp.json()
+
+        contracts = payload.get("data", [])
+        for item in contracts:
+            exchange_symbol = item.get("symbol")
+            if not exchange_symbol:
+                continue
+            self._symbol_map[self.normalize_symbol(exchange_symbol)] = exchange_symbol
+
+    async def fetch_symbols(self) -> set[str]:
+        await self._ensure_symbol_map()
+        allowed = {"BTCUSDT", "ETHUSDT", "SOLUSDT"}
+        return {s for s in allowed if s in self._symbol_map}
+
+    async def _get_contract(self, symbol: str) -> str:
+        await self._ensure_symbol_map()
+        if symbol not in self._symbol_map:
+            raise ValueError(f"KuCoin contract not found for {symbol}")
+        return self._symbol_map[symbol]
+
     async def fetch_orderbook(self, symbol: str, depth: int = 10) -> OrderBook:
-        contract = self._contract_symbol(symbol)
+        contract = await self._get_contract(symbol)
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
                 f"{self._base_url}/api/v1/level2/snapshot",
                 params={"symbol": contract},
             )
-            data = resp.json()["data"]
+            payload = resp.json()
+            data = payload.get("data")
+            if not data:
+                raise ValueError(f"KuCoin orderbook error: {payload}")
 
         limit = min(max(depth, 1), 50)
         bids = [OrderBookLevel(price=float(x[0]), size=float(x[1])) for x in data.get("bids", [])[:limit]]
@@ -41,10 +66,13 @@ class KucoinAdapter(BaseExchangeAdapter):
         return OrderBook(symbol=symbol, exchange=self.exchange, bids=bids, asks=asks, timestamp_ms=ts)
 
     async def fetch_funding(self, symbol: str) -> FundingInfo | None:
-        contract = self._contract_symbol(symbol)
+        contract = await self._get_contract(symbol)
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"{self._base_url}/api/v1/contracts/{contract}")
-            data = resp.json()["data"]
+            payload = resp.json()
+            data = payload.get("data")
+            if not data:
+                raise ValueError(f"KuCoin funding error: {payload}")
 
         current = now_ms()
         return FundingInfo(
@@ -56,10 +84,13 @@ class KucoinAdapter(BaseExchangeAdapter):
         )
 
     async def fetch_volume_24h(self, symbol: str) -> float:
-        contract = self._contract_symbol(symbol)
+        contract = await self._get_contract(symbol)
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"{self._base_url}/api/v1/contracts/{contract}")
-            data = resp.json()["data"]
+            payload = resp.json()
+            data = payload.get("data")
+            if not data:
+                raise ValueError(f"KuCoin volume error: {payload}")
         return float(data.get("turnoverOf24h", 0.0))
 
     def build_ticker_link(self, symbol: str) -> str:

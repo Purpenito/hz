@@ -10,5 +10,8 @@ class SymbolsStore:
     def set_symbols(self, exchange: Exchange, symbols: set[str]) -> None:
         self.by_exchange[exchange] = symbols
 
+    def get_symbols(self, exchange: Exchange) -> set[str]:
+        return self.by_exchange.get(exchange, set())
+
     def common(self, ex_a: Exchange, ex_b: Exchange) -> set[str]:
-        return self.by_exchange.get(ex_a, set()) & self.by_exchange.get(ex_b, set())
+        return self.get_symbols(ex_a) & self.get_symbols(ex_b)

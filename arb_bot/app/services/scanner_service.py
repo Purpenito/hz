@@ -31,6 +31,7 @@ class ScannerService:
         self.volume_store = volume_store
         self.symbols_per_exchange_cycle = max(1, symbols_per_exchange_cycle)
         self._exchange_offsets = {adapter.exchange: 0 for adapter in self.registry.all()}
+        self._global_common_offset = 0
         self._last_refresh_metrics: dict[str, int] = {
             "symbols_total": 0,
             "symbols_common_2plus": 0,
@@ -56,9 +57,21 @@ class ScannerService:
     def get_last_refresh_metrics(self) -> dict[str, int]:
         return dict(self._last_refresh_metrics)
 
+    def _common_symbols_for_cycle(self, symbols: set[str]) -> list[str]:
+        ordered = sorted(symbols)
+        if len(ordered) <= self.symbols_per_exchange_cycle:
+            return ordered
+
+        offset = self._global_common_offset % len(ordered)
+        selected: list[str] = []
+        for i in range(self.symbols_per_exchange_cycle):
+            selected.append(ordered[(offset + i) % len(ordered)])
+        self._global_common_offset = (offset + self.symbols_per_exchange_cycle) % len(ordered)
+        return selected
+
     async def refresh_market_data(self, depth: int = 10) -> None:
         symbols_total = 0
-        symbols_scanned_this_cycle = 0
+        symbols_by_exchange = {}
 
         for adapter in self.registry.all():
             try:
@@ -67,10 +80,29 @@ class ScannerService:
                 # keep scanner alive even if one exchange API is temporarily unavailable
                 continue
 
+            symbols_by_exchange[adapter.exchange] = symbols
             self.symbols_store.set_symbols(adapter.exchange, symbols)
             symbols_total += len(symbols)
-            symbols_to_scan = self._symbols_for_cycle(adapter.exchange, symbols)
-            symbols_scanned_this_cycle += len(symbols_to_scan)
+
+        symbol_presence: Counter[str] = Counter()
+        for symbols in symbols_by_exchange.values():
+            for symbol in symbols:
+                symbol_presence[symbol] += 1
+
+        common_symbols = {symbol for symbol, count in symbol_presence.items() if count >= 2}
+        cycle_common_symbols = self._common_symbols_for_cycle(common_symbols)
+        symbols_scanned_this_cycle = len(cycle_common_symbols)
+
+        for adapter in self.registry.all():
+            symbols = symbols_by_exchange.get(adapter.exchange)
+            if not symbols:
+                continue
+
+            symbols_to_scan = [symbol for symbol in cycle_common_symbols if symbol in symbols]
+            if not symbols_to_scan:
+                # fallback to local exchange slice when there are no common symbols yet
+                symbols_to_scan = self._symbols_for_cycle(adapter.exchange, symbols)
+
             for symbol in symbols_to_scan:
                 try:
                     self.orderbook_store.put(await adapter.fetch_orderbook(symbol, depth=depth))
@@ -90,13 +122,9 @@ class ScannerService:
                     # keep previous volume (if exists) when fetch fails
                     pass
 
-        symbol_presence: Counter[str] = Counter()
-        for adapter in self.registry.all():
-            for symbol in self.symbols_store.get_symbols(adapter.exchange):
-                symbol_presence[symbol] += 1
         self._last_refresh_metrics = {
             "symbols_total": symbols_total,
-            "symbols_common_2plus": sum(1 for cnt in symbol_presence.values() if cnt >= 2),
+            "symbols_common_2plus": len(common_symbols),
             "symbols_scanned_this_cycle": symbols_scanned_this_cycle,
         }
 
